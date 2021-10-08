@@ -1,0 +1,278 @@
+---
+title: "PSTAT 231 Homework 1"
+author: "Blaine Quackenbush"
+date: "10/6/2021"
+output: pdf_document
+
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 5, fig.height = 3, echo = TRUE)
+options(digits = 4)
+library(knitr)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+```
+
+```{r description}
+# Taken from assignment
+algae <- read_table(
+  "algaeBloom.txt",
+  col_names=c('season','size','speed','mxPH','mnO2','Cl','NO3','NH4',
+              'oPO4','PO4','Chla','a1','a2','a3','a4','a5','a6','a7'),
+  na="XXXXXXX") # What does this do?
+glimpse(algae)
+```
+
+
+1. Descriptive Summary Statistics. Given the lack of further information on the problem domain, it is wise to investigate some of the statistical properties of the data, so as to get a better grasp of the problem. It is always a good idea to start our analysis with some kind of exploratory data analysis. A first idea of the statistical properties of the data can be obtained through a summary of its descriptive statistics. 
+
+
+(a) Count the number of observations in each size using summarise() in dplyr
+
+
+```{r summary}
+#Count number of observations by size
+algae %>%
+  group_by(size) %>%
+  summarise(n())
+```
+
+
+(b) Are there missing values? Calculate the mean and variance of each chemical (ignore $a_1$ through $a_7$). What do you notice about the magnitude of the two quantities for different chemicals?
+
+
+  Yes, there are missing values as we can see below:
+
+
+  
+```{r missing1}
+#Retrieve missing values, summarise by column
+algae %>% select(everything()) %>% summarise_all(funs(sum(is.na(.)))) 
+```
+
+
+
+  Also, below are the means and variances of each column below:
+
+
+  
+```{r mean/var}
+#Retrieve mean of all numerical columns except for a1 through a7
+algae %>% select(mxPH:Chla) %>% summarise_if(is.numeric, mean, na.rm = TRUE)
+#Retrieve mean of all numerical columns except for a1 through a7
+algae %>% select(mxPH:Chla) %>% summarise_if(is.numeric, var, na.rm = TRUE)
+```
+
+
+
+  Upon inspection of the means, we can see that the means of chloride, orthophosphate, ammonium, and phosphate are the highest, with the latter two being significantly higher than the others. That being said, chloride, ammonium, orthophosphate, and phosphate also have significantly higher variances than any of the other chemicals. Thus, it could be the case that there are a few bodies of water that are skewing both the means and variances for these chemicals. 
+  
+
+
+(c) Compute the median and MAD of each chemical and compare the two sets of quantities. What do you notice?
+
+
+
+```{r median/mad}
+#Retrieve median of all numerical columns except for a1 through a7
+algae %>% select(mxPH:Chla) %>% summarise_if(is.numeric, median, na.rm = TRUE)
+#Retrieve MAD of all numerical columns except for a1 through a7
+algae %>% select(mxPH:Chla) %>% summarise_if(is.numeric, mad, na.rm = TRUE)
+```
+
+
+
+  All of the values above are much smaller than and seem more reasonable for the four chemicals mentioned above. The other chemicals haven't seen too much of a difference between mean/variance versus median/MAD. This shows that there must be some outliers for chloride, ammonium, orthophosphate, and phosphate that are significantly increasing their means and variances.
+
+
+
+2. Data Visualization. Most of the time, the information in the data set is also well captured graphically. Histogram, scatter plot, boxplot, Q-Q plot are frequently used tools for data visualization. Use ggplot for all of these visualizations.
+
+
+
+  (a) Produce a histogram of mnO2 with the title 'Histogram of mnO2' based on algae data set. Use an appropriate argument to show the probability instead of the frequency as the vertical axis. (Hint: look at the examples in the help file geom_histogram()) Is the distribution skewed?
+
+
+  
+```{r hist1}
+ggplot(algae, aes(x = mnO2)) + #Specify mn02 column should be x axis
+  #Plot histogram, change count to density
+  geom_histogram(aes(y = ..density..), color = 'blue', fill = 'lightblue', bins = 50) + 
+  labs(title = 'Histogram of mnO2', x = 'mnO2', y = 'Probability')+ #Label axes and title
+  scale_x_continuous(breaks = seq(1, 14, 1)) #Increase ticks on x axis
+```
+
+
+
+  The distribution is certainly skewed, as the range of mnO2 values ranges between ~1.5 to ~13.5, but the median and means are 9.12 and 9.8, respectively. Also, we can see that the probability density is much higher for values between 8 and 12.5 than values below 8 and above 12.5.
+
+
+
+  (b) Add a density curve using geom_density() and rug plots using geom_rug() to above histogram.
+
+
+  
+```{r hist2}
+ ggplot(algae, aes(x = mnO2)) + #Specify mnO2 column as x axis
+  #Plot histogram, change count to density
+  geom_histogram(aes(y = ..density..), color = 'blue', fill = 'lightblue', bins = 50) +
+  labs(title = 'Histogram of mnO2', x = 'mnO2', y = 'Probability') + #Labels
+  geom_density(aes(y = ..density..)) + #Add density curve
+  geom_rug() + #Add rug plot
+  scale_x_continuous(breaks = seq(1, 14, 1)) #Increase tick marks on x axis
+```
+
+
+
+  (c) Create a boxplot with the title 'A conditioned Boxplot of Algal $a_3$' for $a_3$ grouped by speed. What do you notice?
+
+
+  
+```{r box}
+ggplot(algae, aes(x = speed)) + #Specify boxes by speed
+  geom_boxplot(aes(y = a3)) + #Use a3 column
+  labs(title = 'A Conditioned Boxplot of Algal a_3', x = 'Speed', y = 'a_3') #Labels
+```
+
+
+
+  The majority of the rivers seem to have lower amounts of algal $a_3$, although it seems that rivers that have a faster flow can have higher concentrations of $a_3$ than slow moving rivers.
+  
+  
+
+3. Dealing with missing values. 
+
+
+
+  (a) How many observations contain missing values? How many missing values are there in each variable?
+
+
+
+```{r missing2}
+sum(is.na(algae))
+#Summarize number of missing values by column
+algae %>% select(everything()) %>% summarise_all(funs(sum(is.na(.)))) 
+```
+
+
+
+  As we can see above, there are 33 total missing values, and they are categozied by variable as well.
+
+
+  
+  (b) Removing observations with missing values: use filter() function in dplyr package to observations with any missing value, and save the resulting dataset without missing values as algae.del. Report how many observations are in algae.del.
+
+
+  
+```{r algae.del}
+algae.del <- algae %>% filter(complete.cases(.)) #New data frame with no missing values
+algae.del %>% summarise(., n()) #Summarise new data frame
+```
+ 
+
+
+ As we can see, there are 184 observations without missing data.
+ 
+
+
+4. In lecture we present the bias-variance tradeoff that takes the form 
+$$\mathbb{E}\left[ \left(y_0 - \hat{f}(x_0)\right)^2 \right] = \text{Var}(\hat{f}(x_0)) + \left[ \text{Bias}(\hat{f}(x_0)) \right]^2 + \text{Var}(\epsilon)$$
+where the underlying model $Y = f(X) + \epsilon$ satisfies: (1) $\epsilon$ is a zero-mean random noise, and $X$ is non-random (all randomness in $Y$ comes from $\epsilon$); (2) (x_0, y_0) is a test observation, independent of the training set, and drawn from the same model; (3) $\hat{f}(\cdot)$ is the estimate of $f$ obtained from the training set.
+
+
+
+  (a) Which of the term(s) in the bias-variance tradeoff above represent the reducible error? Which of the term(s) represent the irreducible error?
+  
+  
+  
+  Since we have defined the following:
+  $$\text{Bias}(\hat{f}(x_0)) := \mathbb{E}\left[\hat{f}(x_0) \right] - f(x_0),$$
+  and 
+  $$\text{Var}(\hat{f}(x_0)) := \mathbb{E} \left[ \left(\hat{f}(x_0) - \mathbb{E} \hat{f}(x_0) \right)^2 \right],$$
+  as well as our assumption that the only randomness from $Y$ comes from $\epsilon$, we can see that the reducible error arises from the bias and variance of $\hat{f}(x_0)$ and the irreducible error comes from the variance of $\epsilon$.
+  
+  
+  
+  (b) Use the bias-variance tradeoff above to show that the expected test error is always at least as large as the irreducible error. 
+  
+  
+  
+  Using that $y_0 = f(x_0) + \epsilon$, we can expand the expected test error:
+  $$\mathbb{E}\left[ \left(y_0 - \hat{f}(x_0)\right)^2 \right] = \mathbb{E}\left[(f(x_0))^2) - 2f(x_0) \hat{f}(x_0) + (\hat{f}(x_0))^2 + 2 \epsilon f(x_0) - 2 \epsilon \hat{f}(x_0) + \epsilon^2 \right]$$
+    $$= \mathbb{E} \left[(f(x_0) - \hat{f}(x_0))^2\right] + 2 \mathbb{E}[\epsilon(f(x_0) - \hat{f}(x_0))] + \mathbb{E}[\epsilon^2].$$
+  Clearly, we can minimize this error in the case that $f(x_0) = \hat{f}(x_0)$, and so we have 
+  $$\mathbb{E}\left[ \left(y_0 - \hat{f}(x_0)\right)^2 \right] \geq \mathbb{E} \left[(f(x_0) - f(x_0))^2\right] + 2 \mathbb{E}[\epsilon(f(x_0) - f(x_0))] + \mathbb{E}[\epsilon^2] = \mathbb{E}[\epsilon^2]$$
+  and so our lower bound for the expected test error will always be $\mathbb{E}[\epsilon^2] = \text{Var}(\epsilon)$, or the irreducible error.
+  
+  
+  
+5. Prove the bias-variance tradeoff where Bias$(\hat{f}(x_0)) = \mathbb{E}[\hat{f}(x_0)]- f(x_0)$.
+
+
+
+Proof. Expanding the expected test error, where we assume $y_0 = f(x_0) + \epsilon$, we get
+$$\mathbb{E}\left[ \left(y_0 - \hat{f}(x_0)\right)^2 \right] = \mathbb{E}\left[(f(x_0))^2) - 2f(x_0) \hat{f}(x_0) + (\hat{f}(x_0))^2 + 2 \epsilon f(x_0) - 2 \epsilon \hat{f}(x_0) + \epsilon^2 \right]$$
+  $$= \mathbb{E} \left[(f(x_0) - \hat{f}(x_0))^2\right] + 2 \mathbb{E}[\epsilon(f(x_0) - \hat{f}(x_0))] + \mathbb{E}[\epsilon^2]$$
+    Above, we have the first piece of the equation shown, and this is $\mathbb{E}[\epsilon^2] = \text{Var}(\epsilon)$, since we assume the mean of $\epsilon$ is zero. Note that by our assumptions on $\epsilon$, we have that $\epsilon$ is independent of $f(x_0) - \hat{f}(x_0)$, and so we have
+    $$\mathbb{E}[\epsilon(f(x_0) - \hat{f}(x_0))] = \mathbb{E}[f(x_0) - \hat{f}(x_0)]\mathbb{E}[\epsilon]= 0$$
+    since $\mathbb{E}[\epsilon]= 0$, again by our assumptions on $\epsilon$. Now we have 
+$$\mathbb{E}\left[ \left(y_0 - \hat{f}(x_0)\right)^2 \right] =\mathbb{E} \left[(f(x_0) - \hat{f}(x_0))^2\right] + \text{Var}(\epsilon).$$
+Now let us expand the first term on the right hand side above:
+$$\mathbb{E} \left[(f(x_0) - \hat{f}(x_0))^2\right] = \mathbb{E} \left[((f(x_0) -\mathbb{E}[\hat{f}(x_0)]) + (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0))^2\right]$$
+$$= \mathbb{E} \left[ (f(x_0) -\mathbb{E}[\hat{f}(x_0)])^2 + 2(f(x_0) -\mathbb{E}[\hat{f}(x_0)]) (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0)) +  (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0))^2\right]$$
+$$= \mathbb{E}\left[  (f(x_0) -\mathbb{E}[\hat{f}(x_0)])^2\right] + \mathbb{E}\left[ 2(f(x_0) -\mathbb{E}[\hat{f}(x_0)]) (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0)) \right] + \mathbb{E}\left[ (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0))^2\right].$$
+$$=\mathbb{E}\left[(\mathbb{E}[\hat{f}(x_0)]  -(f(x_0))^2\right] + \mathbb{E}\left[ (\hat{f}(x_0) - \mathbb{E}[\hat{f}(x_0)])^2\right] + \mathbb{E}\left[ 2(f(x_0) -\mathbb{E}[\hat{f}(x_0)]) (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0)) \right].$$
+Now, we can note that that Bias$(\hat{f}(x_0)) = \mathbb{E}\left[\hat{f}(x_0) \right] - f(x_0)$ is a constant, and so taking the expectation of this value does not change. This gives us
+$$=\left[\text{Bias}(\hat{f}(x_0))\right]^2 + \text{Var}(\hat{f}(x_0) + \mathbb{E}\left[ 2(f(x_0) -\mathbb{E}[\hat{f}(x_0)]) (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0)) \right]$$
+Now let us turn our focus to the term $\mathbb{E}\left[ 2(f(x_0) -\mathbb{E}[\hat{f}(x_0)]) (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0)) \right]$. Note that 
+$f(x_0) - \mathbb{E}(\hat{f}(x_0))$ is simply a number, and so we have
+$$\mathbb{E}\left[ 2(f(x_0) -\mathbb{E}[\hat{f}(x_0)]) (\mathbb{E}[\hat{f}(x_0)] - \hat{f}(x_0)) \right] = 2(f(x_0) - \mathbb{E}(\hat{f}(x_0)))\mathbb{E}\left[\hat{f}(x_0) - \mathbb{E}[\hat{f}(x_0)]\right]$$
+$$= 2(f(x_0) - \mathbb{E}(\hat{f}(x_0)))\left(\mathbb{E}[\hat{f}(x_0)] - \mathbb{E}[\mathbb{E}[\hat{f}(x_0)]] \right)$$
+$$=2(f(x_0) - \mathbb{E}(\hat{f}(x_0)))\left(\mathbb{E}[\hat{f}(x_0)] - \mathbb{E}[\hat{f}(x_0)] \right) = 0.$$
+Therefore, putting this all together, we have 
+$$\mathbb{E}\left[ \left(y_0 - \hat{f}(x_0)\right)^2 \right] = \text{Var}(\hat{f}(x_0)) + \left[ \text{Bias}(\hat{f}(x_0)) \right]^2 + \text{Var}(\epsilon).$$
+This concludes our proof.
+
+
+
+6. Distance metrics are a very important concept used in KNN. Here $x, y$ are $p$-dimensional vectors. Show that the follwoing measures are distance metrics by showing the above properties hold:
+
+  
+  
+  (a) $d(x, y) = \|x-y\|_2$
+    For all three cases let $x = (x_1, \dots, x_p), y = (y_1, \dots y_p), z = (z_1, \dots, z_p)$.
+    
+  Positivity:
+  Note that we have $\|x-y\|_2 = \sqrt{\sum_{i = 1}^p (x_i - y_i)^2}$. For each $1 \leq i \leq p$, we have that $(x_i- y_i)^2 \geq 0$ and will be identically 0 if and only if $x_i = y_i$. Therefore, we must have that $\|x - y\| \geq 0$ since it is the square root of a sum of nonnegative terms, and can only be identically zero if $x_i = y_i$ for all $i$, namely $x = y$.
+    
+  Symmetry:
+  Note that $(x_i - y_i)^2 = (y_i - x_i)^2$ for each $1 \leq i \leq p$, and so $\sum_{i = 1}^p (x_i - y_i)^2 = \sum_{i = 1}^p (y_i - x_i)^2$, implying that $\|x - y\| = \|y - x\|$.
+  
+  Triangle inequality:
+  For each $i$ let $u_i = x_i - y_i$ and $v_i = y_i - z_i$. Then letting $u = (u_1, \dots, u_p), v = (v_1, \dots, v_p)$ we have 
+  $$\|x - z\|^2 = \|u + v\|^2 = \sum_{i = 1}^p (u_i + v_i)^2$$
+  $$= \sum_{i = 1}^p u_i^2 + \sum_{i = 1}^p v_i^2 +2 \sum_{i = 1}^p u_iv_i$$
+  Let $(u, v) = \sum_{i = 1}^p u_i v_i$ denote the standard inner product. Then we have $\|u + v\| = \|u\|^2 + 2(u, v) + \|v\|^2$. Finally, using the Cauchy-Schwarz inequality $(u, v) \leq \|u\| \|v\|$, we have 
+  $$\|x - z\|^2 = \|u + v\|^2 = \|u\| + 2(u,v) + \|v\|^2 \leq \|u\|^2 + 2\|u\| \|v\| + \|v\|^2 \leq (\|u\| + \|v\|)^2$$
+  Taking the square root of both sides and using that $u = x - y, v = y - z$ we have $$\|x - z\| \leq \|x-y\| + \|y - z\|,$$
+  or $d(x, z) \leq d(x, y) + d(y, z)$.
+  
+  
+  
+  (b) $d(x, y) = \|x - y\|_\infty$.
+  For all three cases let $x = (x_1, \dots, x_p), y = (y_1, \dots y_p), z = (z_1, \dots, z_p)$.
+  
+  Positivity: Note that $\|x - y\| = \max_{1 \leq i \leq p}|x_i - y_i|.$ Thus, we must have by definition of absolute value that $d(x, y) \geq 0$ and further, $d(x, y) = 0$ if and only if $|x_i - y_i| = 0$ for all $i$, in which case $x = y$.
+  
+  Symmetry:
+  This follows from the property of absolute value, namely that $|x_i - y_i| = |y_i - x_i|$ for any real numbers $x_i, y_i$ and so $d(x, y) = d(y, x)$.
+  
+  Triangle inequality:
+  WThis follows from the classic triangle inequality  $|x_i - z_i| \leq |x_i - y_i| + |y_i - z_i|$. Namely for each $1 \leq i \leq p$ we have 
+  $$|x_i - z_i| \leq |x_i - y_i| + |y_i - z_i| \leq \max_{1 \leq i \leq p}|x_i - y_i| + \max_{1 \leq i \leq p}|y_i - z_i| = d(x, y) + d(y, z).$$
+  Thereofore, $d(x, z) \leq d(x, y) + d(y, z)$.
+  
+
+  
+  
