@@ -20,7 +20,7 @@ algae <- read_table(
   "algaeBloom.txt",
   col_names=c('season','size','speed','mxPH','mnO2','Cl','NO3','NH4',
               'oPO4','PO4','Chla','a1','a2','a3','a4','a5','a6','a7'),
-  na="XXXXXXX") # What does this do?
+  na="XXXXXXX") # This is how to show missing values
 glimpse(algae)
 ```
 
@@ -47,8 +47,14 @@ algae %>%
 
   
 ```{r missing1}
-#Retrieve missing values, summarise by column
-algae %>% select(everything()) %>% summarise_all(funs(sum(is.na(.)))) 
+# Retrieve missing values, summarize by column
+
+#algae %>% select(everything()) %>% summarise_all(funs(sum(is.na(.)))) 
+  # funs() is a deprecated way to create a list of lambda functions. We don't 
+  # even need a list of functions, we just need one. Instead use a quosure style 
+  # lambda function: ~ fun(.) where ~ signifies a lambda function and . is the 
+  # dummy variabe. 
+algae %>% summarize_all(~ sum(is.na(.)))
 ```
 
 
