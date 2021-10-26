@@ -1,0 +1,99 @@
+---
+title: "Homework Assignment 2"
+author: "Trevor Klar and Blaine Quackenbush"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 5, fig.height = 3, echo = TRUE)
+options(digits = 4)
+library(knitr)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ISLR)
+library(ROCR)
+
+
+
+## indents are for indenting r code as formatted text
+## They may need to be adjusted depending on your OS
+# if your output looks odd, increase or decrease indent
+indent1 = '    '
+indent2 = '        '
+indent3 = '            '
+
+
+#attach(Auto, pos = 2) # Adds Auto to the local namespace for easier working with. Do this manually once.
+```
+
+## Linear regression (12 pts)
+
+In this problem, we will make use of the *Auto* data set, which is part of the ISLR package and can be directly
+accessed by the name `Auto` once the `ISLR` package is loaded. The dataset contains 9 variables of 392 observations
+of automobiles. The qualitative variable **origin** takes three values: 1, 2, and 3, where 1 stands for American car, 2 stands for European car, and 3 stands for Japanese car.
+```{r}
+head(Auto)
+```
+
+Here we just remind ourselves how `origin` is coded:
+
+```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+tabl <- "
+| Origin | 1 | 2  | 3 |
+|--------|:-------:|:------:|:------:|
+|       |American|European|Japanese|
+"
+cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
+```
+
+
+1. (2 pts) Fit a linear model to the data, in order to predict mpg using all of the other predictors except for name.
+Present the estimated coefficients. (2 pts) With a 0.01 threshold, comment on whether you can reject the null
+hypothesis that there is no linear association between mpg with any of the predictors.
+
+Here we fit a linear model to the data, using all variables except `name` as predictors for `mpg`. We will also consider, with a 0.01 threshold, whether there is a statistically significant linear association between mpg and any of the predictors. 
+```{r}
+auto.lmfit <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + origin, Auto) # Fit a linear model.
+summary(auto.lmfit)
+```
+Note that the F-statistic is quite large (284), and indeed the p-value associated with this F-statistic is is less than $2\times 10^{-16}$. This is much smaller than $0.01$, so we conclude (with 99% certainty) that there is a linear relationship between `mpg` and at least one of these variables. 
+
+2. (2 pts) Take the whole dataset as training set. What is the training mean squared error of this model?
+
+```{r}
+MSE <- function(model) {
+  mean(residuals(model)^2)
+}
+
+MSE(auto.lmfit)
+```
+
+3. (2 pts) What gas mileage do you predict for an European car with 4 cylinders, displacement 122, horsepower
+of 105, weight of 3100, acceleration of 32, built in the year 1991? (Be sure to check how year is coded in the
+dataset).
+```{r}
+predict(auto.lmfit, data.frame(cylinders = 4, displacement = 122, horsepower = 105, weight = 3100, acceleration = 32, year = 91, origin = 2))
+```
+
+
+4. (1 pts) On average, holding all other covariates fixed, what is the difference between the mpg of a Japanese car
+and the mpg of an American car? (1 pts) What is the difference between the mpg of a European car and the
+mpg of an American car?
+```{r}
+# Origin
+# 1 = American
+# 2 = European
+# 3 = Japanese
+
+auto.lmfit
+```
+As we can see, the coefficient of `origin` is 1.42614, so a Japanese car will have 2.852 better MPG on average than an American car, and a European car will have 1.42614 better MPG on average than an American car.
+
+
+5. (2 pts) On average, holding all other predictor variables fixed, what is the change in mpg associated with a
+10-unit increase in displacement?
+
+0.19896 mpg.
+

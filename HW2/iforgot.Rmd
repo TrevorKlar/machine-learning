@@ -1,0 +1,18 @@
+```{r}
+# Exploring datasets
+  # Returns the first parts of a vector, matrix, table, data frame or function.
+  head(x)                         
+  # Returns the last parts of a vector, matrix, table, data frame or function.
+  tail(x)                         
+  # A matrix of scatterplots is produced.
+  pairs(x)                        
+  
+
+# Simple linear regression
+  # Fit linear models. Don't forget to attach(data) to use column names.
+  my.lm.fit <- lm(y ~ x, data)
+  # Get more info about the model
+  summary(my.lm.fit)
+  # Use the model to make a prediction. Do ?predict.lm for more
+  predict(my.lm.fit, data[])
+```
