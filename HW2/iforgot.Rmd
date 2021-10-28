@@ -6,6 +6,9 @@
   tail(x)                         
   # A matrix of scatterplots is produced.
   pairs(x)                        
+  # Print summary statistics for each variable in a dataset.
+  summary(x)
+  
   
 
 # Simple linear regression
@@ -15,4 +18,14 @@
   summary(my.lm.fit)
   # Use the model to make a prediction. Do ?predict.lm for more
   predict(my.lm.fit, data[])
+  
+# Random sampling
+  # Sample n elements from the set x (without replacement by default).
+  sample(x, n)
+  
+# Misc
+  # quosure style lambda function
+  ~ my_function(.)
+  # image syntax
+  ![graph4](logistic1.PNG)
 ```

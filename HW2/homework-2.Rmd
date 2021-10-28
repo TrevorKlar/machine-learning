@@ -25,7 +25,7 @@ indent2 = '        '
 indent3 = '            '
 
 
-#attach(Auto, pos = 2) # Adds Auto to the local namespace for easier working with. Do this manually once.
+#attach(Auto) # Adds Auto to the local namespace for easier working with. Do this manually once.
 ```
 
 ## Linear regression (12 pts)
@@ -39,13 +39,16 @@ head(Auto)
 
 Here we just remind ourselves how `origin` is coded:
 
-```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
-tabl <- "
-| Origin | 1 | 2  | 3 |
-|--------|:-------:|:------:|:------:|
-|       |American|European|Japanese|
-"
-cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
+```{r}
+# Origin
+# 1 = American
+# 2 = European
+# 3 = Japanese
+Auto$origin <- factor(Auto$origin, 
+                      levels = c(1,2,3), 
+                      labels = c("American", "European", "Japanese")
+                      )
+#Auto$origin <- as.factor(Auto$origin)
 ```
 
 
@@ -55,10 +58,11 @@ hypothesis that there is no linear association between mpg with any of the predi
 
 Here we fit a linear model to the data, using all variables except `name` as predictors for `mpg`. We will also consider, with a 0.01 threshold, whether there is a statistically significant linear association between mpg and any of the predictors. 
 ```{r}
-auto.lmfit <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + origin, Auto) # Fit a linear model.
+auto.lmfit <- lm(mpg ~ cylinders + displacement + horsepower + weight 
+                 + acceleration + year + origin, Auto) # Fit a linear model.
 summary(auto.lmfit)
 ```
-Note that the F-statistic is quite large (284), and indeed the p-value associated with this F-statistic is is less than $2\times 10^{-16}$. This is much smaller than $0.01$, so we conclude (with 99% certainty) that there is a linear relationship between `mpg` and at least one of these variables. 
+Note that the F-statistic is quite large (224), and indeed the p-value associated with this F-statistic is is less than $2\times 10^{-16}$. This is much smaller than $0.01$, so we conclude (with 99% certainty) that there is a linear relationship between `mpg` and at least one of these variables. 
 
 2. (2 pts) Take the whole dataset as training set. What is the training mean squared error of this model?
 
@@ -74,7 +78,13 @@ MSE(auto.lmfit)
 of 105, weight of 3100, acceleration of 32, built in the year 1991? (Be sure to check how year is coded in the
 dataset).
 ```{r}
-predict(auto.lmfit, data.frame(cylinders = 4, displacement = 122, horsepower = 105, weight = 3100, acceleration = 32, year = 91, origin = 2))
+# Origin
+# 1 = American
+# 2 = European
+# 3 = Japanese
+predict(auto.lmfit, 
+        data.frame(cylinders = 4, displacement = 122, horsepower = 105, 
+                   weight = 3100, acceleration = 32, year = 91, origin = "European"))
 ```
 
 
@@ -89,11 +99,135 @@ mpg of an American car?
 
 auto.lmfit
 ```
-As we can see, the coefficient of `origin` is 1.42614, so a Japanese car will have 2.852 better MPG on average than an American car, and a European car will have 1.42614 better MPG on average than an American car.
+As we can see, the coefficient of `originJapanese` is 2.85323, so a Japanese car will have 2.853 better MPG on average than an American car, and a European car will have 2.63 better MPG on average than an American car.
 
 
 5. (2 pts) On average, holding all other predictor variables fixed, what is the change in mpg associated with a
 10-unit increase in displacement?
 
-0.19896 mpg.
+0.2398 mpg.
+
+## Algae Classification using Logistic regression (15 pts)
+
+Get the dataset `algaeBloom.txt` from the homework archive file, and read it with the following code:
+
+```{r}
+algae <- read_table("algaeBloom.txt", 
+                     col_names=c('season','size','speed','mxPH','mnO2','Cl',
+                                 'NO3','NH4','oPO4','PO4','Chla','a1','a2','a3',
+                                 'a4','a5','a6','a7'),
+                     na="XXXXXXX")
+head(algae)
+```
+In homework 1, we investigated basic exploratory data analysis for the `algaeBloom` dataset. One of the explaining
+variables is `a1`, which is a numerical attribute. Here, after standardization, we will transform `a1` into a categorical variable with 2 levels: high and low, and conduct its classification using those 11 variables (i.e. do not include a2, a3, $\ldots$ , a7).
+
+We first improve the normality of the numerical attributes by taking the log of all chemical variables. After log
+transformation, we **impute** missing values using the median method. Finally, we transform the variable `a1` into a
+categorical variable with two levels: high if a1 is greater than 5, and low if a1 is smaller than or equal to 5.
+
+```{r}
+# Improve the normality of the numerical attributes by taking the log of all 
+#  chemical variables.
+algae.transformed <- algae %>% mutate_at(vars(4:11), ~ log(.))
+# Impute missing values using the median method.
+algae.transformed <- algae.transformed %>% mutate_at(vars(4:11), 
+                                                     ~ ifelse(is.na(.),median(.,na.rm=TRUE),.))
+# a1
+# 0 means "low"
+# 1 means "high"
+algae.transformed <- algae.transformed %>% mutate(a1 = factor(as.integer(a1 > 5), levels = c(0, 1)))
+```
+
+**Classification Task:** We will build classification models to classify `a1` into `high` vs. `low` using the dataset
+`algae.transformed` as above, and evaluate its training error rates and test error rates. We define a new function, named `calc_error_rate()`, that will calculate misclassification error rate.
+
+```{r}
+calc_error_rate <- function(predicted.values, true.values){
+  # Here predicted.values and true.values are lists of predictions, and 
+  #  true.values!=predicted.values is a list of 1s and 0s according to whether the 
+  #  values match. 
+  return(mean(true.values!=predicted.values))
+}
+```
+
+**Training/test sets*:** Split randomly the data set in a train and a test set:
+```{r}
+# For reproducability
+set.seed(1)
+# Choose 50 random observations from from algae for training. 
+test.indices = sample(1:nrow(algae.transformed), 50)
+# Split the data set into a training set and a test set
+algae.train=algae.transformed[-test.indices,]
+algae.test=algae.transformed[test.indices,]
+```
+
+In a binary classification problem, let $p$ represent the probability of class label “1”, which implies that $1 - p$ represents probability of class label “0”. The *logistic function* (also called the “inverse logit”) is the cumulative distribution function of logistic distribution, which maps a real number $z$ to the open interval $(0, 1)$:
+$$p(z)=\frac{e^z}{1+e^z}$$
+1. (2 pts) Show that indeed the inverse of a logistic function is the *logit* function:
+$$z(p) = \ln\left(\frac{p}{1-p}\right)$$
+    Proof: Observe that the logit and logitic functions compose to form the identity:
+$$
+\begin{aligned}
+ p\circ z(p) &= \exp\left(\ln\left(\frac{p}{1-p}\right)\right) \div \left(1+\exp\left(\ln\left(\frac{p}{1-p}\right)\right)\right) \\
+ &= \left(\frac{p}{1-p}\right) \div \left(1+\frac{p}{1-p}\right) \hspace{1.5in} (*)\\
+ &= \left(\frac{p}{1-p}\right) \div \left(\frac{1-p+p}{1-p}\right) \\
+ &= \left(\frac{p}{1-p}\right) \div \left(\frac{1}{1-p}\right) \\
+ &= \left(\frac{p}{1-p}\right) \cdot \left(\frac{1-p}{1}\right) \\
+ &=p \\
+\end{aligned}
+$$
+    Similarly, composing in opposite order gives 
+$$
+\begin{aligned}
+ z\circ p(z) &= \ln\left[\left(\frac{e^z}{1-e^z}\right) \div \left(1+\frac{e^z}{1-e^z}\right)\right]\\
+ &\text{and the argument of this expression is of the form }(*)\text{, yielding} \\
+ &= \ln[e^z] \\
+ &=z \\
+\end{aligned} _\blacksquare
+$$
+
+*****
+
+2. Assume that $z = \beta_0 + \beta_1 x_1$, and $p = \text{logistic}(z)$. 
+    + (2 pts) How does the odds of the outcome change if you increase $x_1$ by two? 
+    
+    Given values for $\beta_0$, $\beta_1$, and $x_1$, then compute $p\circ z(x_1 + 2)-p\circ z(x_1)$. It's hairy. 
+    
+    ![graph4](logistic1.PNG)
+    + (1 pts) Assume $\beta_1$ is negative: what value does $p$ approach as $x_1 \to \infty$? 
+$$
+\lim\limits_{x_1\to\infty} p\circ z(x_1) = 0
+$$
+    + (1 pts) What value does $p$ approach as $x_1\to-\infty$?
+$$
+\lim\limits_{x_1\to\infty} p\circ z(x_1) = 1
+$$
+
+3. Use logistic regression to perform classification in the data application above. Logistic regression specifically
+estimates the probability that an observation has a particular class label. We can define a probability threshold
+for assigning class labels based on the probabilities returned by the `glm` fit.
+
+In this problem, we will simply use the “majority rule”. If the probability is larger than 50% class as label “1”.
+    + (2 pts) Fit a logistic regression to predict a1 given all other features in the dataset using the glm function.
+```{r}
+algae.glm.fit <- glm(
+  a1 ~ season + size+ speed  + mxPH + mnO2 + Cl + NO3 + NH4 + oPO4 + PO4 + Chla,
+  data = algae.train,
+  family = binomial
+)
+summary(algae.glm.fit)
+```
+    + (2 pts) Estimate the class labels using the majority rule
+```{r}
+algae.train.predicted <- predict(algae.glm.fit, type = "response") %>% round
+algae.test.predicted <- predict(algae.glm.fit, algae.test, type = "response") %>% round
+```
+    + (2 pts) calculate the training and test errors using the calc_error_rate defined earlier.
+```{r}
+calc_error_rate(algae.train.predicted, algae.train["a1"])
+calc_error_rate(algae.test.predicted, algae.train["a1"])
+```
+    
+
 
